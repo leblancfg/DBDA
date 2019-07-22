@@ -1,10 +1,39 @@
 
+  # Standardize the data:
+  data {
+    Ntotal <- length(y)
+    xm <- mean(x)
+    ym <- mean(y)
+    xsd <- sd(x)
+    ysd <- sd(y)
+    for ( i in 1:length(y) ) {
+      zx[i] <- ( x[i] - xm ) / xsd
+      zy[i] <- ( y[i] - ym ) / ysd
+    }
+  }
+  # Specify the model for standardized data:
   model {
     for ( i in 1:Ntotal ) {
-      y[i] ~ dbern( theta[s[i]] )
+      zy[i] ~ dt( zbeta0[s[i]] + zbeta1[s[i]] * zx[i] , 1/zsigma^2 , nu )
     }
-    for ( sIdx in 1:Nsubj ) {
-      theta[sIdx] ~ dbeta( 2 , 2 ) # N.B.: 2,2 prior; change as appropriate.
+    for ( j in 1:Nsubj ) {
+      zbeta0[j] ~ dnorm( zbeta0mu , 1/(zbeta0sigma)^2 )  
+      zbeta1[j] ~ dnorm( zbeta1mu , 1/(zbeta1sigma)^2 )
     }
+    # Priors vague on standardized scale:
+    zbeta0mu ~ dnorm( 0 , 1/(10)^2 )
+    zbeta1mu ~ dnorm( 0 , 1/(10)^2 )
+    zsigma ~ dunif( 1.0E-3 , 1.0E+3 )
+    zbeta0sigma ~ dunif( 1.0E-3 , 1.0E+3 )
+    zbeta1sigma ~ dunif( 1.0E-3 , 1.0E+3 )
+    nu ~ dexp(1/30.0)
+    # Transform to original scale:
+    for ( j in 1:Nsubj ) {
+      beta1[j] <- zbeta1[j] * ysd / xsd  
+      beta0[j] <- zbeta0[j] * ysd  + ym - zbeta1[j] * xm * ysd / xsd 
+    }
+    beta1mu <- zbeta1mu * ysd / xsd  
+    beta0mu <- zbeta0mu * ysd  + ym - zbeta1mu * xm * ysd / xsd 
+    sigma <- zsigma * ysd
   }
   
